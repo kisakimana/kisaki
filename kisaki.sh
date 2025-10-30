@@ -1,8 +1,8 @@
 #!/bin/bash
 #=========================================================
 #                 VPS 一键系统管理脚本
-#                 版本：v1.0
-#                 作者：kisaki
+#                 版本：v1.2
+#                 作者：FMSO
 #=========================================================
 
 # ---------- 配色定义 ----------
@@ -68,6 +68,7 @@ display_system_info() {
     echo -e "${YELLOW}硬盘使用:${RESET}"
     df -h | grep -vE 'tmpfs|udev' | awk '{printf "  %-20s %-8s %-8s %-8s %-10s\n", $1, $2, $3, $4, $6}'
 
+    # BBR状态
     bbr_status="未启用"
     sysctl net.ipv4.tcp_congestion_control | grep -q bbr && bbr_status="已启用"
     lsmod | grep -q bbr && bbr_status="$bbr_status (模块已加载)" || bbr_status="$bbr_status (模块未加载)"
@@ -105,7 +106,7 @@ show_menu() {
     echo -e "${CYAN}==================================================${RESET}"
 }
 
-# ---------- 通用函数 ----------
+# ---------- 通用依赖安装 ----------
 install_deps() {
     for dep in "$@"; do
         if ! command -v "$dep" &>/dev/null; then
@@ -114,14 +115,205 @@ install_deps() {
         fi
     done
 }
+
+# ---------- 通用清理 ----------
 cleanup() {
     [ -d "$1" ] && rm -rf "$1" && echo -e "${GREEN}[√] 清理临时目录: $1${RESET}"
 }
 
-# ---------- 原功能函数（1–12） ----------
-# …（保留原逻辑，省略这里，你已有完整代码）…
+# ---------- 各功能函数 ----------
 
-# ---------- 新增功能 ----------
+system_upgrade() {
+    echo -e "${CYAN}>>> 系统升级与清理开始...${RESET}"
+    apt update -y && apt upgrade -y && apt autoremove -y && apt autoclean -y
+    echo -e "${GREEN}[√] 系统升级与清理完成${RESET}"
+}
+
+enable_bbr() {
+    echo -e "${CYAN}>>> 正在配置 BBR 加速...${RESET}"
+    ver_major=$(get_debian_major_version)
+    ver_full=$(get_debian_version)
+    echo -e "检测到 Debian ${YELLOW}${ver_full}${RESET} (主版本号: ${ver_major})"
+
+    cfg_file="/etc/sysctl.conf"
+    [ "$ver_major" -ge 13 ] && cfg_file="/etc/sysctl.d/sysctl.conf"
+    mkdir -p /etc/sysctl.d
+
+    grep -q "net.core.default_qdisc=fq" "$cfg_file" || echo "net.core.default_qdisc=fq" >>"$cfg_file"
+    grep -q "net.ipv4.tcp_congestion_control=bbr" "$cfg_file" || echo "net.ipv4.tcp_congestion_control=bbr" >>"$cfg_file"
+    [ "$ver_major" -ge 13 ] && sysctl --system >/dev/null || sysctl -p >/dev/null
+
+    modprobe tcp_bbr 2>/dev/null
+    if lsmod | grep -q bbr; then
+        echo -e "${GREEN}[√] BBR 模块加载成功${RESET}"
+    else
+        echo -e "${YELLOW}[!] BBR 模块未加载，可能需要重启系统${RESET}"
+    fi
+
+    sysctl net.ipv4.tcp_congestion_control
+    sysctl net.core.default_qdisc
+    echo -e "${GREEN}[√] BBR 配置完成${RESET}"
+}
+
+enable_swap() {
+    echo -e "${CYAN}>>> 开启 Swap 交换文件${RESET}"
+    
+    if [ -f "/swapfile" ]; then
+        old_size=$(ls -lh /swapfile | awk '{print $5}')
+        echo -e "${YELLOW}[!] 检测到旧 Swap 文件，大小: ${old_size}${RESET}"
+        read -p "是否删除旧 Swap 文件? [Y/n]: " confirm
+        case $confirm in
+            [yY]|[yY][eE][sS]|"")
+                echo -e "${CYAN}>>> 移除旧 Swap 文件...${RESET}"
+                swapoff /swapfile 2>/dev/null
+                sed -i '/\/swapfile/d' /etc/fstab
+                rm -f /swapfile
+                echo -e "${GREEN}[√] 旧 Swap 文件已移除${RESET}"
+                ;;
+            [nN]|[nN][oO])
+                echo -e "${YELLOW}[!] 已取消操作，退出脚本${RESET}"
+                return 1
+                ;;
+            *)
+                echo -e "${RED}[!] 无效输入，退出脚本${RESET}"
+                return 1
+                ;;
+        esac
+    fi
+
+    read -p "请输入 swap 大小 (MB): " size
+    if ! [[ "$size" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}[!] 输入错误，请输入数字${RESET}"
+        return 1
+    fi
+    
+    echo -e "${CYAN}>>> 创建新的 Swap 文件 (${size}MB)...${RESET}"
+    dd if=/dev/zero of=/swapfile bs=1M count=$size status=progress
+    chmod 600 /swapfile
+    mkswap /swapfile && swapon /swapfile
+    echo "/swapfile none swap sw 0 0" >> /etc/fstab
+    sysctl -w vm.swappiness=10 >/dev/null
+    echo -e "${GREEN}[√] Swap 已启用 (${size}MB)${RESET}"
+    free -h | grep -E "Mem:|Swap:"
+}
+
+clean_kernels() {
+    echo -e "${CYAN}>>> 扫描可清理内核...${RESET}"
+    local oldkernels=$(dpkg --get-selections | grep linux | grep deinstall | awk '{print $1}')
+    if [ -z "$oldkernels" ]; then
+        echo -e "${YELLOW}[!] 未发现旧内核${RESET}"
+    else
+        echo "$oldkernels" | xargs apt purge -y
+        echo -e "${GREEN}[√] 旧内核清理完成${RESET}"
+    fi
+}
+
+install_xui() {
+    install_deps "curl"
+    echo -e "${CYAN}>>> 正在安装 X-UI 面板...${RESET}"
+    bash <(curl -Ls https://raw.githubusercontent.com/FranzKafkaYu/x-ui/master/install.sh)
+    echo -e "${GREEN}[√] 安装完成，可访问: http://<IP>:54321${RESET}"
+}
+
+install_3xui() {
+    install_deps "curl"
+    echo -e "${CYAN}>>> 正在安装 3X-UI 面板...${RESET}"
+    bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+    echo -e "${GREEN}[√] 安装完成，可访问: http://<IP>:2053${RESET}"
+}
+
+stream_test() {
+    install_deps "curl"
+    temp=$(mktemp -d)
+    echo -e "${CYAN}>>> 开始流媒体解锁测试...${RESET}"
+    cd "$temp" && bash <(curl -Ls https://IP.Check.Place)
+    cd - >/dev/null
+    cleanup "$temp"
+    echo -e "${GREEN}[√] 流媒体测试完成${RESET}"
+}
+
+net_test() {
+    install_deps "curl"
+    temp=$(mktemp -d)
+    echo -e "${CYAN}>>> 开始网络质量测试...${RESET}"
+    cd "$temp" && bash <(curl -Ls https://Check.Place) -N
+    cd - >/dev/null
+    cleanup "$temp"
+    echo -e "${GREEN}[√] 网络质量测试完成${RESET}"
+}
+
+full_test() {
+    install_deps "curl"
+    temp=$(mktemp -d)
+    echo -e "${CYAN}>>> 开始NodeQuality综合测试...${RESET}"
+    cd "$temp" && bash <(curl -sL https://run.NodeQuality.com)
+    cd - >/dev/null
+    cleanup "$temp"
+    echo -e "${GREEN}[√] NodeQuality综合测试完成${RESET}"
+}
+
+benchmark() {
+    install_deps "curl"
+    temp=$(mktemp -d)
+    echo -e "${CYAN}>>> 开始服务器性能测试...${RESET}"
+    cd "$temp" && curl -sL yabs.sh -o yabs.sh && chmod +x yabs.sh && bash yabs.sh
+    cd - >/dev/null
+    cleanup "$temp"
+    echo -e "${GREEN}[√] 性能测试完成${RESET}"
+}
+
+install_docker() {
+    install_deps "curl"
+    echo -e "${CYAN}>>> 安装 Docker 环境...${RESET}"
+    curl -fsSL https://get.docker.com | sh
+    arch=$(uname -m)
+    [ "$arch" = "aarch64" ] && arch="arm64" || arch="x86_64"
+    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$arch" -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+    echo -e "${GREEN}[√] Docker & Compose 安装完成${RESET}"
+    docker --version
+    docker-compose --version
+}
+
+system_cleanup() {
+    echo -e "${BOLD}${CYAN}>>> 正在执行系统多方位清理...${RESET}"
+
+    declare -A cleanup_dirs=(
+        ["/tmp"]="临时目录"
+        ["/var/tmp"]="临时系统缓存"
+        ["/var/cache/apt/archives"]="APT 缓存"
+        ["/var/lib/apt/lists/partial"]="APT 残留包"
+        ["/var/crash"]="系统崩溃转储文件"
+    )
+
+    for dir in "${!cleanup_dirs[@]}"; do
+        if [ -d "$dir" ]; then
+            rm -rf "${dir:?}"/* 2>/dev/null
+            echo -e "${YELLOW}[→] 已清理 ${cleanup_dirs[$dir]}: $dir${RESET}"
+        fi
+    done
+
+    for user_home in /home/*; do
+        [ -d "$user_home" ] || continue
+        [ -d "$user_home/.cache" ] && rm -rf "$user_home/.cache/*" 2>/dev/null
+        [ -d "$user_home/.cache/thumbnails" ] && rm -rf "$user_home/.cache/thumbnails/*" 2>/dev/null
+        [ -d "$user_home/Downloads" ] && rm -rf "$user_home/Downloads/*" 2>/dev/null
+    done
+    echo -e "${GREEN}[√] 用户缓存、缩略图、Downloads 清理完成${RESET}"
+
+    journalctl --vacuum-time=1d >/dev/null 2>&1
+    echo -e "${RED}[!] systemd 日志已清理 (仅保留1天内日志)${RESET}"
+
+    find /var/log -type f \( -name "*.gz" -o -name "*.old" -o -name "*.log.*" \) -delete 2>/dev/null
+    echo -e "${RED}[!] 旧日志文件清理完成${RESET}"
+
+    echo -e "${BOLD}${CYAN}--------------------------------------------------${RESET}"
+    echo -e "${BOLD}${GREEN}系统清理完成！${RESET}"
+    df -h / | tail -1 | awk -v G="${GREEN}" -v R="${RESET}" '{printf "%s当前磁盘使用情况:%s\n  总空间: %s, 已用: %s, 可用: %s, 使用率: %s%s\n", G, R, $2, $3, $4, $5, R}'
+    echo -e "${BOLD}${CYAN}--------------------------------------------------${RESET}"
+}
+
+# ---------- 新增 13-17 功能 ----------
 gb5_test() {
     install_deps "curl"
     echo -e "${CYAN}>>> 开始 GB5 性能测试...${RESET}"
@@ -131,7 +323,7 @@ gb5_test() {
 
 nexttrace_test() {
     install_deps "curl"
-    echo -e "${CYAN}>>> 安装并运行 NextTrace 路由测试...${RESET}"
+    echo -e "${CYAN}>>> 安装并运行 NextTrace 路由跟踪...${RESET}"
     bash <(curl -Ls https://raw.githubusercontent.com/sjlleo/nexttrace/main/nt_install.sh)
     echo -e "${GREEN}[√] NextTrace 已执行${RESET}"
 }
@@ -145,7 +337,7 @@ install_sui() {
 
 pd_dns_test() {
     install_deps "wget"
-    echo -e "${CYAN}>>> 开始 PD DNS 延迟检测...${RESET}"
+    echo -e "${CYAN}>>> PD DNS 延迟检测...${RESET}"
     bash <(wget -qO- https://raw.githubusercontent.com/Cd1s/network-latency-tester/main/latency.sh)
     echo -e "${GREEN}[√] PD DNS 测试完成${RESET}"
 }
