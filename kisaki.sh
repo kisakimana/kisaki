@@ -1,8 +1,8 @@
 #!/bin/bash
 #=========================================================
 #                 VPS 一键系统管理脚本
-#                 版本：v1.2
-#                 作者：FMSO
+#                 版本：v1.1
+#                 作者：kisaki
 #=========================================================
 
 # ---------- 配色定义 ----------
@@ -102,6 +102,7 @@ show_menu() {
     echo -e "${YELLOW}15.${RESET} 安装 S-UI 面板"
     echo -e "${YELLOW}16.${RESET} PD DNS 延迟检测"
     echo -e "${YELLOW}17.${RESET} 安装 哪吒 V0 面板"
+    echo -e "${YELLOW}18.${RESET} 安装 iperf3"
     echo -e "${YELLOW}0.${RESET} 退出脚本"
     echo -e "${CYAN}==================================================${RESET}"
 }
@@ -122,7 +123,6 @@ cleanup() {
 }
 
 # ---------- 各功能函数 ----------
-
 system_upgrade() {
     echo -e "${CYAN}>>> 系统升级与清理开始...${RESET}"
     apt update -y && apt upgrade -y && apt autoremove -y && apt autoclean -y
@@ -313,7 +313,6 @@ system_cleanup() {
     echo -e "${BOLD}${CYAN}--------------------------------------------------${RESET}"
 }
 
-# ---------- 新增 13-17 功能 ----------
 gb5_test() {
     install_deps "curl"
     echo -e "${CYAN}>>> 开始 GB5 性能测试...${RESET}"
@@ -351,6 +350,18 @@ install_nezha_v0() {
     echo -e "${GREEN}[√] 哪吒 V0 安装完成${RESET}"
 }
 
+# ---------- 18 安装 iperf3 ----------
+install_iperf3() {
+    if command -v iperf3 &>/dev/null; then
+        echo -e "${YELLOW}[!] iperf3 已安装，版本: $(iperf3 --version | head -1)${RESET}"
+    else
+        echo -e "${CYAN}>>> 安装 iperf3...${RESET}"
+        apt-get install -y iperf3
+        echo -e "${GREEN}[√] iperf3 安装完成${RESET}"
+        iperf3 --version
+    fi
+}
+
 # ---------- 主循环 ----------
 while true; do
     show_menu
@@ -373,6 +384,7 @@ while true; do
         15) install_sui ;;
         16) pd_dns_test ;;
         17) install_nezha_v0 ;;
+        18) install_iperf3 ;;
         0) echo -e "${GREEN}已退出脚本，再见！${RESET}"; exit 0 ;;
         *) echo -e "${RED}[×] 无效选项，请重新输入${RESET}"; sleep 1 ;;
     esac
