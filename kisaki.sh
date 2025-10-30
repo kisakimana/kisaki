@@ -1,7 +1,7 @@
 #!/bin/bash
 #=========================================================
 #                 VPS 一键系统管理脚本
-#                 版本：v1.1
+#                 版本：v1.0
 #                 作者：kisaki
 #=========================================================
 
@@ -103,6 +103,7 @@ show_menu() {
     echo -e "${YELLOW}16.${RESET} PD DNS 延迟检测"
     echo -e "${YELLOW}17.${RESET} 安装 哪吒 V0 面板"
     echo -e "${YELLOW}18.${RESET} 安装 iperf3"
+    echo -e "${YELLOW}19.${RESET} DD成 Debian12 并设置密码"
     echo -e "${YELLOW}0.${RESET} 退出脚本"
     echo -e "${CYAN}==================================================${RESET}"
 }
@@ -350,7 +351,6 @@ install_nezha_v0() {
     echo -e "${GREEN}[√] 哪吒 V0 安装完成${RESET}"
 }
 
-# ---------- 18 安装 iperf3 ----------
 install_iperf3() {
     if command -v iperf3 &>/dev/null; then
         echo -e "${YELLOW}[!] iperf3 已安装，版本: $(iperf3 --version | head -1)${RESET}"
@@ -360,6 +360,17 @@ install_iperf3() {
         echo -e "${GREEN}[√] iperf3 安装完成${RESET}"
         iperf3 --version
     fi
+}
+
+# ---------- 19 DD成Debian12并设置密码 ----------
+dd_debian12() {
+    read -p "请输入目标密码 (默认: password): " user_pass
+    user_pass=${user_pass:-password}
+    echo -e "${CYAN}>>> 开始 DD 成 Debian12，并设置密码: ${user_pass}${RESET}"
+    wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh'
+    chmod a+x InstallNET.sh
+    bash InstallNET.sh -debian 12 -pwd "$user_pass"
+    echo -e "${GREEN}[√] Debian12 DD 并设置密码完成${RESET}"
 }
 
 # ---------- 主循环 ----------
@@ -385,6 +396,7 @@ while true; do
         16) pd_dns_test ;;
         17) install_nezha_v0 ;;
         18) install_iperf3 ;;
+        19) dd_debian12 ;;
         0) echo -e "${GREEN}已退出脚本，再见！${RESET}"; exit 0 ;;
         *) echo -e "${RED}[×] 无效选项，请重新输入${RESET}"; sleep 1 ;;
     esac
