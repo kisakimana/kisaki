@@ -1,0 +1,15 @@
+disable_ipv6() {
+    echo -e "${CYAN}>>> 正在禁用 IPv6（Debian 12 适配）...${RESET}"
+
+    cat >/etc/sysctl.d/99-disable-ipv6.conf <<EOF
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
+EOF
+
+    sysctl --system >/dev/null 2>&1
+
+    echo -e "${GREEN}[√] IPv6 已成功禁用${RESET}"
+    echo -e "${YELLOW}当前 IPv6 状态：${RESET}"
+    cat /proc/sys/net/ipv6/conf/all/disable_ipv6
+}
