@@ -1,0 +1,13 @@
+# ---------- 启用 IPv6 (恢复) ----------
+enable_ipv6() {
+    echo -e "${CYAN}>>> 正在恢复 IPv6...${RESET}"
+
+    if [ -f /etc/sysctl.d/99-disable-ipv6.conf ]; then
+        rm -f /etc/sysctl.d/99-disable-ipv6.conf
+    fi
+
+    sysctl --system >/dev/null 2>&1
+
+    echo -e "${GREEN}[√] IPv6 已恢复${RESET}"
+    echo -e "${YELLOW}当前 IPv6 状态:${RESET} $(cat /proc/sys/net/ipv6/conf/all/disable_ipv6)"
+}
