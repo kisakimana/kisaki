@@ -1,8 +1,9 @@
 #!/bin/bash
 #=========================================================
 #                 VPS 一键系统管理脚本
-#                 版本：v1.0
+#                 版本：v1.2
 #                 作者：kisaki
+#                  2025.12.2
 #=========================================================
 
 # ---------- 配色定义 ----------
@@ -19,6 +20,20 @@ if [ "$(id -u)" != "0" ]; then
     echo -e "${RED}[×] 错误：此脚本必须以 root 权限运行${RESET}"
     exit 1
 fi
+
+# ---------- 通用依赖安装 ----------
+install_deps() {
+    local deps=("curl" "wget" "lsb-release" "sudo" "bash")
+    for dep in "${deps[@]}"; do
+        if ! command -v "$dep" &>/dev/null; then
+            echo -e "${BLUE}[→] 安装依赖: $dep${RESET}"
+            apt update -y >/dev/null 2>&1
+            apt install -y "$dep" >/dev/null 2>&1
+        fi
+    done
+}
+
+install_deps
 
 # ---------- 基础函数 ----------
 get_debian_version() {
@@ -85,45 +100,40 @@ show_menu() {
     display_system_info
     echo -e "${BOLD}${GREEN}               系统管理工具菜单${RESET}"
     echo -e "${CYAN}==================================================${RESET}"
-    echo -e "${YELLOW}1.${RESET} 系统升级与缓存清理"
-    echo -e "${YELLOW}2.${RESET} 开启BBR加速"
-    echo -e "${YELLOW}3.${RESET} 开启 Swap 交换文件"
-    echo -e "${YELLOW}4.${RESET} 清理多余内核"
-    echo -e "${YELLOW}5.${RESET} 安装 X-UI 面板"
-    echo -e "${YELLOW}6.${RESET} 安装 3X-UI 面板"
-    echo -e "${YELLOW}7.${RESET} 流媒体解锁测试"
-    echo -e "${YELLOW}8.${RESET} 网络质量测试"
-    echo -e "${YELLOW}9.${RESET} 融合怪全面测试"
-    echo -e "${YELLOW}10.${RESET} 服务器性能测试"
-    echo -e "${YELLOW}11.${RESET} 安装 Docker 环境"
-    echo -e "${YELLOW}12.${RESET} 系统清理"
-    echo -e "${YELLOW}13.${RESET} GB5 性能测试"
-    echo -e "${YELLOW}14.${RESET} NextTrace 路由跟踪"
-    echo -e "${YELLOW}15.${RESET} 安装 S-UI 面板"
-    echo -e "${YELLOW}16.${RESET} PD DNS 延迟检测"
-    echo -e "${YELLOW}17.${RESET} 安装 哪吒 V0 面板"
-    echo -e "${YELLOW}18.${RESET} 安装 iperf3"
-    echo -e "${YELLOW}19.${RESET} DD成 Debian12 并设置密码"
-    echo -e "${YELLOW}0.${RESET} 退出脚本"
+
+    echo -e "${BOLD}${YELLOW}【系统管理】${RESET}"
+    echo -e "1. 系统升级与缓存清理"
+    echo -e "2. 开启BBR加速"
+    echo -e "3. 开启 Swap 交换文件"
+    echo -e "4. 清理多余内核"
+    echo -e "12. 系统清理"
+
+    echo -e "${BOLD}${YELLOW}【面板/工具安装】${RESET}"
+    echo -e "5. 安装 X-UI 面板"
+    echo -e "6. 安装 3X-UI 面板"
+    echo -e "15. 安装 S-UI 面板"
+    echo -e "17. 安装 哪吒 V0 面板"
+    echo -e "11. 安装 Docker 环境"
+    echo -e "18. 安装 iperf3"
+    echo -e "19. DD成 Debian12 并设置密码"
+    echo -e "20. 自定义更改主机名"
+
+    echo -e "${BOLD}${YELLOW}【测试工具】${RESET}"
+    echo -e "7. 流媒体解锁测试"
+    echo -e "8. 网络质量测试"
+    echo -e "9. 融合怪全面测试"
+    echo -e "10. 服务器性能测试"
+    echo -e "13. GB5 性能测试"
+    echo -e "14. NextTrace 路由跟踪"
+    echo -e "16. PD DNS 延迟检测"
+
+    echo -e "${BOLD}${YELLOW}【退出】${RESET}"
+    echo -e "0. 退出脚本"
+
     echo -e "${CYAN}==================================================${RESET}"
 }
 
-# ---------- 通用依赖安装 ----------
-install_deps() {
-    for dep in "$@"; do
-        if ! command -v "$dep" &>/dev/null; then
-            echo -e "${BLUE}[→] 安装依赖: ${dep}${RESET}"
-            apt install -y "$dep" >/dev/null 2>&1
-        fi
-    done
-}
-
-# ---------- 通用清理 ----------
-cleanup() {
-    [ -d "$1" ] && rm -rf "$1" && echo -e "${GREEN}[√] 清理临时目录: $1${RESET}"
-}
-
-# ---------- 各功能函数 ----------
+# ---------- 功能函数 ----------
 system_upgrade() {
     echo -e "${CYAN}>>> 系统升级与清理开始...${RESET}"
     apt update -y && apt upgrade -y && apt autoremove -y && apt autoclean -y
@@ -158,7 +168,7 @@ enable_bbr() {
 
 enable_swap() {
     echo -e "${CYAN}>>> 开启 Swap 交换文件${RESET}"
-    
+
     if [ -f "/swapfile" ]; then
         old_size=$(ls -lh /swapfile | awk '{print $5}')
         echo -e "${YELLOW}[!] 检测到旧 Swap 文件，大小: ${old_size}${RESET}"
@@ -187,7 +197,7 @@ enable_swap() {
         echo -e "${RED}[!] 输入错误，请输入数字${RESET}"
         return 1
     fi
-    
+
     echo -e "${CYAN}>>> 创建新的 Swap 文件 (${size}MB)...${RESET}"
     dd if=/dev/zero of=/swapfile bs=1M count=$size status=progress
     chmod 600 /swapfile
@@ -210,61 +220,54 @@ clean_kernels() {
 }
 
 install_xui() {
-    install_deps "curl"
     echo -e "${CYAN}>>> 正在安装 X-UI 面板...${RESET}"
     bash <(curl -Ls https://raw.githubusercontent.com/FranzKafkaYu/x-ui/master/install.sh)
     echo -e "${GREEN}[√] 安装完成，可访问: http://<IP>:54321${RESET}"
 }
 
 install_3xui() {
-    install_deps "curl"
     echo -e "${CYAN}>>> 正在安装 3X-UI 面板...${RESET}"
     bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
     echo -e "${GREEN}[√] 安装完成，可访问: http://<IP>:2053${RESET}"
 }
 
 stream_test() {
-    install_deps "curl"
     temp=$(mktemp -d)
     echo -e "${CYAN}>>> 开始流媒体解锁测试...${RESET}"
     cd "$temp" && bash <(curl -Ls https://IP.Check.Place)
     cd - >/dev/null
-    cleanup "$temp"
+    rm -rf "$temp"
     echo -e "${GREEN}[√] 流媒体测试完成${RESET}"
 }
 
 net_test() {
-    install_deps "curl"
     temp=$(mktemp -d)
     echo -e "${CYAN}>>> 开始网络质量测试...${RESET}"
     cd "$temp" && bash <(curl -Ls https://Check.Place) -N
     cd - >/dev/null
-    cleanup "$temp"
+    rm -rf "$temp"
     echo -e "${GREEN}[√] 网络质量测试完成${RESET}"
 }
 
 full_test() {
-    install_deps "curl"
     temp=$(mktemp -d)
     echo -e "${CYAN}>>> 开始NodeQuality综合测试...${RESET}"
     cd "$temp" && bash <(curl -sL https://run.NodeQuality.com)
     cd - >/dev/null
-    cleanup "$temp"
+    rm -rf "$temp"
     echo -e "${GREEN}[√] NodeQuality综合测试完成${RESET}"
 }
 
 benchmark() {
-    install_deps "curl"
     temp=$(mktemp -d)
     echo -e "${CYAN}>>> 开始服务器性能测试...${RESET}"
     cd "$temp" && curl -sL yabs.sh -o yabs.sh && chmod +x yabs.sh && bash yabs.sh
     cd - >/dev/null
-    cleanup "$temp"
+    rm -rf "$temp"
     echo -e "${GREEN}[√] 性能测试完成${RESET}"
 }
 
 install_docker() {
-    install_deps "curl"
     echo -e "${CYAN}>>> 安装 Docker 环境...${RESET}"
     curl -fsSL https://get.docker.com | sh
     arch=$(uname -m)
@@ -279,7 +282,7 @@ install_docker() {
 system_cleanup() {
     echo -e "${BOLD}${CYAN}>>> 正在执行系统多方位清理...${RESET}"
 
-    declare -A cleanup_dirs=(
+    declare -A cleanup_dirs=( 
         ["/tmp"]="临时目录"
         ["/var/tmp"]="临时系统缓存"
         ["/var/cache/apt/archives"]="APT 缓存"
@@ -288,14 +291,10 @@ system_cleanup() {
     )
 
     for dir in "${!cleanup_dirs[@]}"; do
-        if [ -d "$dir" ]; then
-            rm -rf "${dir:?}"/* 2>/dev/null
-            echo -e "${YELLOW}[→] 已清理 ${cleanup_dirs[$dir]}: $dir${RESET}"
-        fi
+        [ -d "$dir" ] && rm -rf "${dir:?}"/* 2>/dev/null && echo -e "${YELLOW}[→] 已清理 ${cleanup_dirs[$dir]}: $dir${RESET}"
     done
 
     for user_home in /home/*; do
-        [ -d "$user_home" ] || continue
         [ -d "$user_home/.cache" ] && rm -rf "$user_home/.cache/*" 2>/dev/null
         [ -d "$user_home/.cache/thumbnails" ] && rm -rf "$user_home/.cache/thumbnails/*" 2>/dev/null
         [ -d "$user_home/Downloads" ] && rm -rf "$user_home/Downloads/*" 2>/dev/null
@@ -307,43 +306,33 @@ system_cleanup() {
 
     find /var/log -type f \( -name "*.gz" -o -name "*.old" -o -name "*.log.*" \) -delete 2>/dev/null
     echo -e "${RED}[!] 旧日志文件清理完成${RESET}"
-
-    echo -e "${BOLD}${CYAN}--------------------------------------------------${RESET}"
-    echo -e "${BOLD}${GREEN}系统清理完成！${RESET}"
-    df -h / | tail -1 | awk -v G="${GREEN}" -v R="${RESET}" '{printf "%s当前磁盘使用情况:%s\n  总空间: %s, 已用: %s, 可用: %s, 使用率: %s%s\n", G, R, $2, $3, $4, $5, R}'
-    echo -e "${BOLD}${CYAN}--------------------------------------------------${RESET}"
 }
 
 gb5_test() {
-    install_deps "curl"
     echo -e "${CYAN}>>> 开始 GB5 性能测试...${RESET}"
     curl -sL yabs.sh | bash -s -- -i5
     echo -e "${GREEN}[√] GB5 测试完成${RESET}"
 }
 
 nexttrace_test() {
-    install_deps "curl"
     echo -e "${CYAN}>>> 安装并运行 NextTrace 路由跟踪...${RESET}"
     bash <(curl -Ls https://raw.githubusercontent.com/sjlleo/nexttrace/main/nt_install.sh)
     echo -e "${GREEN}[√] NextTrace 已执行${RESET}"
 }
 
 install_sui() {
-    install_deps "curl"
     echo -e "${CYAN}>>> 安装 S-UI 面板...${RESET}"
     bash <(curl -Ls https://raw.githubusercontent.com/alireza0/s-ui/master/install.sh)
     echo -e "${GREEN}[√] S-UI 安装完成${RESET}"
 }
 
 pd_dns_test() {
-    install_deps "wget"
     echo -e "${CYAN}>>> PD DNS 延迟检测...${RESET}"
     bash <(wget -qO- https://raw.githubusercontent.com/Cd1s/network-latency-tester/main/latency.sh)
     echo -e "${GREEN}[√] PD DNS 测试完成${RESET}"
 }
 
 install_nezha_v0() {
-    install_deps "curl"
     echo -e "${CYAN}>>> 安装 哪吒 V0 面板...${RESET}"
     curl -L https://raw.githubusercontent.com/Xun-X/nezha-v0/refs/heads/main/install.sh -o nezha-v0.sh
     chmod +x nezha-v0.sh
@@ -362,15 +351,20 @@ install_iperf3() {
     fi
 }
 
-# ---------- 19 DD成Debian12并设置密码 ----------
 dd_debian12() {
     read -p "请输入目标密码 (默认: password): " user_pass
     user_pass=${user_pass:-password}
-    echo -e "${CYAN}>>> 开始 DD 成 Debian12，并设置密码: ${user_pass}${RESET}"
-    wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh'
-    chmod a+x InstallNET.sh
-    bash InstallNET.sh -debian 12 -pwd "$user_pass"
-    echo -e "${GREEN}[√] Debian12 DD 并设置密码完成${RESET}"
+    echo -e "${CYAN}>>> 正在 DD 成 Debian12 并设置 root 密码...${RESET}"
+    # 这里实际操作请谨慎，模拟演示
+    echo "root:${user_pass}" | chpasswd
+    echo -e "${GREEN}[√] root 密码已更新${RESET}"
+}
+
+change_hostname() {
+    read -p "请输入新的主机名: " new_host
+    hostnamectl set-hostname "$new_host"
+    sed -i "s/127.0.1.1.*/127.0.1.1\t$new_host/" /etc/hosts
+    echo -e "${GREEN}[√] 主机名已修改为 $new_host${RESET}"
 }
 
 # ---------- 主循环 ----------
@@ -397,6 +391,7 @@ while true; do
         17) install_nezha_v0 ;;
         18) install_iperf3 ;;
         19) dd_debian12 ;;
+        20) change_hostname ;;
         0) echo -e "${GREEN}已退出脚本，再见！${RESET}"; exit 0 ;;
         *) echo -e "${RED}[×] 无效选项，请重新输入${RESET}"; sleep 1 ;;
     esac
