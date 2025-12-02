@@ -47,10 +47,10 @@ get_debian_major_version() {
 # ---------- 菜单 ----------
 show_menu() {
     echo -e "${CYAN}#=========================================================${RESET}"
-    echo -e "${CYAN}#                 VPS 一键系统管理脚本${RESET}"
-    echo -e "${CYAN}#                 版本：v1.0${RESET}"
-    echo -e "${CYAN}#                 作者：kisaki${RESET}"
-    echo -e "${CYAN}#                 精简版：去除系统信息显示${RESET}"
+    echo -e "${CYAN}#                 VPS 一键系统管理脚本                  ${RESET}"
+    echo -e "${CYAN}#                 版本：v1.0                              ${RESET}"
+    echo -e "${CYAN}#                 作者：kisaki                             ${RESET}"
+    echo -e "${CYAN}#                 精简版：去除系统信息显示                 ${RESET}"
     echo -e "${CYAN}#=========================================================${RESET}"
     echo -e "${BOLD}${GREEN}               系统管理工具菜单${RESET}"
     echo -e "${CYAN}==================================================${RESET}"
