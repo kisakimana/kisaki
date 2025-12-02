@@ -49,7 +49,7 @@ show_menu() {
     echo -e "${CYAN}╔════════════════════════════════════════════════╗${RESET}"
     echo -e "${CYAN}║${BOLD}           VPS 一键系统管理脚本 v1.0           ${RESET}${CYAN}║${RESET}"
     echo -e "${CYAN}║${BOLD}               作者：kisaki                     ${RESET}${CYAN}║${RESET}"
-    echo -e "${CYAN}║${BOLD}           精简版：去除系统信息显示            ${RESET}${CYAN}║${RESET}"
+    echo -e "${CYAN}║${BOLD}           2025.12.2            ${RESET}${CYAN}║${RESET}"
     echo -e "${CYAN}╚════════════════════════════════════════════════╝${RESET}"
     
     echo -e "${BOLD}${GREEN}================== 系统管理工具菜单 ==================${RESET}"
