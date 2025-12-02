@@ -44,39 +44,47 @@ get_debian_major_version() {
     [ -f /etc/debian_version ] && echo $(cut -d'.' -f1 < /etc/debian_version) || echo "0"
 }
 
-# ---------- 菜单 ----------
+# ---------- 菜单美化函数 ----------
 show_menu() {
-    echo -e "${CYAN}#=========================================================${RESET}"
-    echo -e "${CYAN}#                 VPS 一键系统管理脚本                  ${RESET}"
-    echo -e "${CYAN}#                 版本：v1.0                              ${RESET}"
-    echo -e "${CYAN}#                 作者：kisaki                             ${RESET}"
-    echo -e "${CYAN}#                 精简版：去除系统信息显示                 ${RESET}"
-    echo -e "${CYAN}#=========================================================${RESET}"
-    echo -e "${BOLD}${GREEN}               系统管理工具菜单${RESET}"
-    echo -e "${CYAN}==================================================${RESET}"
-    echo -e "${YELLOW}1.${RESET} 系统升级与缓存清理"
-    echo -e "${YELLOW}2.${RESET} 开启BBR加速"
-    echo -e "${YELLOW}3.${RESET} 开启 Swap 交换文件"
-    echo -e "${YELLOW}4.${RESET} 清理多余内核"
-    echo -e "${YELLOW}5.${RESET} 安装 X-UI 面板"
-    echo -e "${YELLOW}6.${RESET} 安装 3X-UI 面板"
-    echo -e "${YELLOW}7.${RESET} 流媒体解锁测试"
-    echo -e "${YELLOW}8.${RESET} 网络质量测试"
-    echo -e "${YELLOW}9.${RESET} 融合怪全面测试"
+    echo -e "${CYAN}╔════════════════════════════════════════════════╗${RESET}"
+    echo -e "${CYAN}║${BOLD}           VPS 一键系统管理脚本 v1.0           ${RESET}${CYAN}║${RESET}"
+    echo -e "${CYAN}║${BOLD}               作者：kisaki                     ${RESET}${CYAN}║${RESET}"
+    echo -e "${CYAN}║${BOLD}           精简版：去除系统信息显示            ${RESET}${CYAN}║${RESET}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════╝${RESET}"
+    
+    echo -e "${BOLD}${GREEN}================== 系统管理工具菜单 ==================${RESET}"
+
+    echo -e "${YELLOW} 1.${RESET} 系统升级与缓存清理"
+    echo -e "${YELLOW} 2.${RESET} 开启 BBR 加速"
+    echo -e "${YELLOW} 3.${RESET} 开启 Swap 交换文件"
+    echo -e "${YELLOW} 4.${RESET} 清理多余内核"
+    
+    echo -e "${YELLOW} 5.${RESET} 安装 X-UI 面板"
+    echo -e "${YELLOW} 6.${RESET} 安装 3X-UI 面板"
+    
+    echo -e "${YELLOW} 7.${RESET} 流媒体解锁测试"
+    echo -e "${YELLOW} 8.${RESET} 网络质量测试"
+    echo -e "${YELLOW} 9.${RESET} 融合怪全面测试"
     echo -e "${YELLOW}10.${RESET} 服务器性能测试"
+    
     echo -e "${YELLOW}11.${RESET} 安装 Docker 环境"
     echo -e "${YELLOW}12.${RESET} 系统清理"
     echo -e "${YELLOW}13.${RESET} GB5 性能测试"
     echo -e "${YELLOW}14.${RESET} NextTrace 路由跟踪"
+    
     echo -e "${YELLOW}15.${RESET} 安装 S-UI 面板"
     echo -e "${YELLOW}16.${RESET} PD DNS 延迟检测"
     echo -e "${YELLOW}17.${RESET} 安装 哪吒 V0 面板"
     echo -e "${YELLOW}18.${RESET} 安装 iperf3"
+    
     echo -e "${YELLOW}19.${RESET} DD成 Debian12 并设置密码"
     echo -e "${YELLOW}20.${RESET} 自定义更改主机名"
-    echo -e "${YELLOW}0.${RESET} 退出脚本"
-    echo -e "${CYAN}==================================================${RESET}"
+    echo -e "${YELLOW} 0.${RESET} 退出脚本"
+
+    echo -e "${GREEN}==================================================${RESET}"
+    read -p "请输入选项编号: " choice
 }
+
 
 # ---------- 各功能函数 ----------
 system_upgrade() {
