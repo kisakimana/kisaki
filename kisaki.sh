@@ -19,6 +19,15 @@ if [ "$(id -u)" != "0" ]; then
     echo -e "${RED}[×] 错误：此脚本必须以 root 权限运行${RESET}"
     exit 1
 fi
+# ---------- 通用依赖安装 ----------
+apt update -y >/dev/null 2>&1
+for dep in "${deps[@]}"; do
+    if ! command -v "$dep" &>/dev/null; then
+        echo -e "${BLUE}[→] 安装依赖: $dep${RESET}"
+        apt install -y "$dep" >/dev/null 2>&1
+    fi
+done
+
 
 # ---------- 基础函数 ----------
 get_debian_version() {
