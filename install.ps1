@@ -10,7 +10,7 @@ if ($PSVersionTable.PSVersion.Major -lt 5) {
 
 # Set agent repo and fixed version
 $agentrepo = "nezhahq/agent"
-$agenttag = "v0.20.5"
+$agenttag = "v0.18.0"
 
 # Determine file type based on architecture
 if ([System.Environment]::Is64BitOperatingSystem) {
